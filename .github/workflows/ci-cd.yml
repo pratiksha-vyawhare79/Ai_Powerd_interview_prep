@@ -1,0 +1,82 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18
+        cache: 'npm'
+        cache-dependency-path: |
+          client/package-lock.json
+          server/package-lock.json
+
+    # Test and Build Backend
+    - name: Install Server Dependencies
+      run: |
+        cd server
+        if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+    - name: Build Server Check
+      run: |
+        cd server
+        # Check syntax / files are fine
+        node -c server.js
+        node -c src/app.js
+
+    # Test and Build Frontend
+    - name: Install Client Dependencies
+      run: |
+        cd client
+        if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+    - name: Build Client
+      run: |
+        cd client
+        npm run build
+
+    # Test Docker Builds
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Backend Docker Image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./server
+        push: false
+        tags: prepai-api:test
+
+    - name: Build Frontend Docker Image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./client
+        push: false
+        tags: prepai-frontend:test
+        build-args: |
+          VITE_API_URL=http://localhost:5000/api
+
+  # Placeholder Deploy Job (Commented instructions)
+  # deploy:
+  #   needs: lint-and-build
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/main'
+  #   steps:
+  #   - name: Deploy to Cloud VM (e.g. AWS EC2, DigitalOcean)
+  #     run: |
+  #       echo "To configure deployment:"
+  #       echo "1. Set up SSH Keys in GitHub repository Secrets (e.g. SSH_PRIVATE_KEY, SERVER_IP, SERVER_USER)"
+  #       echo "2. Add step to log in to Docker Hub or GitHub Container Registry (GHCR)"
+  #       echo "3. Build and push production tags"
+  #       echo "4. SSH into server, pull images, and run: docker-compose -f docker-compose.prod.yml up -d"

@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # Database Service
+  mongo:
+    image: mongo:6.0
+    container_name: prepai-db
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - prepai-network
+
+  # Backend Service
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: prepai-api
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGO_URI=mongodb://mongo:27017/ai-interview-prep
+      - JWT_SECRET=your_super_secret_jwt_key
+      - OPENAI_API_KEY=your_openai_api_key_here
+    depends_on:
+      - mongo
+    networks:
+      - prepai-network
+
+  # Frontend Service
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=http://localhost:5000/api
+    container_name: prepai-frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - server
+    networks:
+      - prepai-network
+
+volumes:
+  mongo-data:
+    driver: local
+
+networks:
+  prepai-network:
+    driver: bridge
