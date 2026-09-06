@@ -20,7 +20,20 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health Check API
+// Root & Health Check APIs
+app.get('/', (req, res) => {
+  res.status(200).json({
+    message: 'PrepAI Backend API is running successfully!',
+    frontend: 'http://localhost:3000',
+    health: '/health',
+    routes: {
+      auth: '/api/auth',
+      interview: '/api/interview',
+      dashboard: '/api/dashboard'
+    }
+  });
+});
+
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', timestamp: new Date() });
 });
